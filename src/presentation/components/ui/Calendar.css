@@ -1,0 +1,25 @@
+/* .fc-timegrid-slot {
+    height: 3em !important;
+}
+.fc-timegrid-slot-label {
+    height: 3em !important;
+} */
+.custom-event-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 2px;
+    overflow: hidden;
+}
+.event-time {
+    font-size: 0.8em;
+    font-weight: bold;
+}
+.event-title {
+    font-weight: bold;
+    white-space: normal;
+}
+.event-description {
+    font-size: 0.8em;
+    white-space: normal;
+}

@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  profile       Profile?
+  events        Event[]   @relation("EventOrganizer")
+  tickets       Ticket[]
+  favorites     Event[]   @relation("UserFavorites")
+  notifications Notification[]
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  bio         String?
+  avatar      String?
+  phoneNumber String?
+  address     String?
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id           String        @id @default(cuid())
+  title        String
+  description  String
+  startDate    DateTime
+  endDate      DateTime
+  location     String
+  category     EventCategory
+  image        String?
+  status       EventStatus   @default(DRAFT)
+  capacity     Int
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  organizerId  String
+  organizer    User          @relation("EventOrganizer", fields: [organizerId], references: [id])
+  tickets      Ticket[]
+  favoredBy    User[]        @relation("UserFavorites")
+  tags         Tag[]
+  notifications Notification[]
+}
+
+model Ticket {
+  id          String      @id @default(cuid())
+  type        String
+  price       Float
+  quantity    Int
+  soldCount   Int         @default(0)
+  saleStart   DateTime
+  saleEnd     DateTime
+  eventId     String
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  purchasedBy User?       @relation(fields: [userId], references: [id])
+  userId      String?
+  status      TicketStatus @default(AVAILABLE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Tag {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  events  Event[]
+}
+
+model Notification {
+  id        String            @id @default(cuid())
+  type      NotificationType
+  message   String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId   String?
+  event     Event?           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+enum UserRole {
+  ADMIN
+  ORGANIZER
+  USER
+}
+
+enum EventCategory {
+  CULTURAL
+  PROFESSIONAL
+  SPORTS
+  ENTERTAINMENT
+  OTHER
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum TicketStatus {
+  AVAILABLE
+  SOLD_OUT
+  RESERVED
+}
+
+enum NotificationType {
+  EVENT_UPDATE
+  TICKET_PURCHASE
+  REMINDER
+  SYSTEM
+}

@@ -1,0 +1,98 @@
+LEMON/
+│
+├── src/
+│   │
+│   ├── app/
+│   │   ├── api/ (APIs REST ou GraphQL, si nécessaires)
+│   │   ├── auth/ (pour les pages login/register et API auth)
+│   │   └── (routes d'app/pages spécifiques)
+│   │
+│   ├── domain/ (logique métier et abstractions)
+│   │   ├── entities/
+│   │   ├── interfaces/
+│   │   ├── mappers/
+│   │   └── usecases/
+│   │
+│   ├── infrastructure/ (implémentations des repositories et services)
+│   │   ├── database/ (Prisma et accès aux données)
+│   │   ├── repositories/
+│   │   └── services/ (services externes comme l'API d'authentification)
+│   │
+│   ├── presentation/ (tout ce qui concerne l'UI et la logique de formulaire)
+│   │   ├── components/ (composants spécifiques à l'interface utilisateur)
+│   │   ├── hooks/ (hooks personnalisés)
+│   │   └── validation/ (schémas Zod)
+│   │
+│   ├── utils/ (fonctions utilitaires partagées)
+│   │
+│   └── server-actions/ (actions côté serveur sécurisées avec next-safe-action)
+│       ├── auth/ (les fonctions server actions de auth)
+│       │   ├── login.action.ts
+│       │   └── login.action.ts
+│       └── (autres dossier de action)
+│
+├── prisma/ (schema.prisma pour la base de données)
+├── public/ (dossier statique)
+├── styles/ (feuilles de style globales)
+├── .env (variables d'environnement)
+├── components.json (configuration de schad cn ui)
+└── (autres fichiers de configuration: tsconfig, next.config.js, etc.)
+
+Explications des nouveaux dossiers :
+
+## Core
+
+Ce dossier contient les éléments centraux de l'application :
+
+- `config` : Pour la configuration globale de l'application.
+- `logger` : Pour la gestion des logs.
+
+## Data
+
+Ce dossier gère l'accès aux données :
+
+- `datasources` : Contient les implémentations concrètes pour accéder aux données (API, base de données).
+- `repositories` : Implémente les interfaces définies dans le domaine pour l'accès aux données.
+
+## Domain
+
+C'est le cœur de votre logique métier :
+
+- `entities` : Définit les modèles de données principaux.
+- `usecases` : Contient la logique métier de l'application.
+- `interfaces` : Définit les contrats pour les repositories et services.
+
+## Infrastructure
+
+Gère les détails d'implémentation spécifiques :
+
+- `database` : Configuration et initialisation de Prisma.
+- `api` : Implémentation des routes API si nécessaire.
+
+## Presentation
+
+Contient la logique de présentation :
+
+- `hooks` : Hooks personnalisés pour la gestion d'état et la logique de présentation.
+- `store` : Si vous utilisez un state management global (ex: Redux, Zustand).
+
+## Server Actions
+
+Placez ici vos Server Actions Next.js. Ils agiront comme des ponts entre votre UI et vos use cases.
+
+## Utils
+
+Pour les fonctions utilitaires génériques.
+
+## Utilisation de Prisma
+
+- Placez votre fichier `schema.prisma` dans le dossier `prisma` à la racine du projet.
+- Utilisez Prisma dans vos repositories dans le dossier `data/repositories`.
+
+## Server Actions et API
+
+- Implémentez vos Server Actions dans le dossier `server-actions`. Ces actions devraient appeler les use cases appropriés.
+- Si vous avez besoin d'API routes traditionnelles, placez-les dans `app/api`.
+
+
+

@@ -1,0 +1,1299 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  accessToken  String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@map("sessions")
+}
+
+enum SERIE {
+  A
+  D
+  C
+  TECHNIQUE
+  OSE
+  S
+  L
+  G2
+}
+
+enum UserRoles {
+  ADMIN
+  PARENTS
+  TEACHERS
+  STUDENTS
+  CONSUMERS
+  DIRECTORS
+  SUPERVISOR
+  GENERAL_SUPERVISORS
+  ASSISTANT_DIRECTORS
+}
+
+enum RoleAuthorizationType {
+  SYSTEM
+  SCHOOL
+}
+
+model Authorization {
+  id        Int                   @id @default(autoincrement())
+  name      String                @db.VarChar(150)
+  type      RoleAuthorizationType
+  createdAt DateTime              @default(now()) @map("created_at")
+  updatedAt DateTime              @updatedAt @map("updated_at")
+  createdBy String                @map("created_by")
+  updatedBy String?               @map("updated_by")
+
+  creator User  @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater User? @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  users UserAuthorization[]
+
+  @@map("authorization")
+}
+
+model UserAuthorization {
+  id              String   @id @default(cuid())
+  authorizationId Int
+  userId          String
+  assignatorId    String
+  assignedAt      DateTime @default(now())
+
+  perm_read   Boolean @default(false)
+  perm_write  Boolean @default(false)
+  perm_create Boolean @default(false)
+  perm_delete Boolean @default(false)
+
+  authorization Authorization @relation(fields: [authorizationId], references: [id])
+  user          User          @relation("authorization", fields: [userId], references: [id])
+  assignator    User          @relation("assignator", fields: [assignatorId], references: [id])
+
+  @@map("user_authorization")
+}
+
+enum CertificationType {
+  ACADEMIQUE
+  PEDAGOGIQUE
+}
+
+model CertificationTitle {
+  id        Int               @id @default(autoincrement())
+  name      String            @db.VarChar(150)
+  createdBy String            @map("created_by")
+  updatedBy String?           @map("updated_by")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+  type      CertificationType
+
+  certifications Certification[]
+
+  creator User  @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater User? @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("certification_title")
+}
+
+model Certification {
+  id                   String             @id @default(cuid())
+  certificationTitleId Int
+  userId               String
+  certificationTitle   CertificationTitle @relation(fields: [certificationTitleId], references: [id])
+  user                 User               @relation(fields: [userId], references: [id])
+
+  @@map("certification")
+}
+
+model Level {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(150)
+  createdBy String   @map("created_by")
+  updatedBy String?  @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  subjects    Subject[]
+  examSession ExamSession[]
+  exercises   Exercise[]
+
+  cycle           Cycle
+  classrooms      Classroom[]
+  registrationFee RegistrationFee[]
+  tutitionFee     TutitionFee[]
+
+  creator User  @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater User? @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("levels")
+}
+
+model User {
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  username           String    @unique
+  password           String    @db.VarChar(255)
+  active             Boolean   @default(true)
+  emailVerified      DateTime? @map("email_verified")
+  image              String?
+  isTwoFactorEnabled Boolean   @default(false)
+  createdBy          String?   @map("created_by")
+  updatedBy          String?   @map("updated_by")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  profile               Profile?
+  client                Client?
+  agentSkill            AgentSkill[]
+  agentQLearningState   AgentQLearningState[]
+  twoFactorConfirmation TwoFactorConfirmation?
+  staff                 Staff?                 @relation("staff")
+  classroomTitularized  Classroom?             @relation("titularized")
+  skills                Skills[]
+  exerciceHistory       ExerciseHistory[]
+
+  roles         RoleUser[] @relation("user")
+  rolesAssigned RoleUser[] @relation("assignator")
+
+  accounts       Account[]
+  sessions       Session[]
+  images         Image[]
+  certifications Certification[]
+  notes          Note[]          @relation("student")
+
+  userFamily Family[]            @relation("relatedUser")
+  examRoom   CandidateExamRoom[] @relation("student")
+
+  authorizations        UserAuthorization[] @relation("authorization")
+  authorizationsAsigned UserAuthorization[] @relation("assignator")
+
+  authorizationCreated Authorization[] @relation("creator")
+  authorizationUpdated Authorization[] @relation("updater")
+
+  paymentCreated Payment[] @relation("creator")
+  paymentUpdated Payment[] @relation("updater")
+
+  schoolYearsCreated SchoolYear[] @relation("creator")
+  schoolYearsUpdated SchoolYear[] @relation("updater")
+
+  reportCardCreated ReportCard[] @relation("creator")
+  reportCardUpdated ReportCard[] @relation("updater")
+
+  subjectReportCardCreated SubjectReportCard[] @relation("creator")
+  subjectReportCardUpdated SubjectReportCard[] @relation("updater")
+
+  classAverageCreated ClassAverage[] @relation("creator")
+  classAverageUpdated ClassAverage[] @relation("updater")
+
+  correctionTrackingCreated CorrectionTracking[] @relation("creator")
+  correctionTrackingUpdated CorrectionTracking[] @relation("updater")
+
+  correctionTrackingEmitterRelease  CorrectionTracking[] @relation("emitterRelease")
+  correctionTrackingRecipientReease CorrectionTracking[] @relation("recipientRelease")
+
+  correctionTrackingEmitterReturn   CorrectionTracking[] @relation("emitterReturn")
+  correctionTrackingRecipientReturn CorrectionTracking[] @relation("recipientReturn")
+
+  notesCreated Note[] @relation("creator")
+  notesUpdated Note[] @relation("updater")
+
+  examPeriodCreated ExamPeriod[] @relation("creator")
+  examPeriodUpdated ExamPeriod[] @relation("updater")
+
+  dispatchCreated Dispatch[] @relation("creator")
+  dispatchUpdated Dispatch[] @relation("updater")
+
+  examSessionCreated ExamSession[] @relation("creator")
+  examSessionUpdated ExamSession[] @relation("updater")
+
+  feeSliceCreated FeeSlice[] @relation("creator")
+  feeSliceUpdated FeeSlice[] @relation("updater")
+
+  registeredAt        Registration[] @relation("student")
+  registrationCreated Registration[] @relation("creator")
+  registrationUpdated Registration[] @relation("updater")
+
+  registrationFeeCreated RegistrationFee[] @relation("creator")
+  registrationFeeUpdated RegistrationFee[] @relation("updater")
+
+  tutitionFeeCreated TutitionFee[] @relation("creator")
+  tutitionFeeUpdated TutitionFee[] @relation("updater")
+
+  subjectTitleCreated SubjectTitle[] @relation("creator")
+  subjectTitleUpdated SubjectTitle[] @relation("updater")
+
+  subjectsCreated Subject[] @relation("creator")
+  subjectsUpdated Subject[] @relation("updater")
+
+  staffCreated Staff[] @relation("creator")
+  staffUpdated Staff[] @relation("updater")
+
+  classroomsCreated Classroom[] @relation("creator")
+  classroomsUpdated Classroom[] @relation("updater")
+
+  schoolsCreated School[] @relation("creator")
+  schoolsUpdated School[] @relation("updater")
+
+  rolesCreated Role[] @relation("creator")
+  rolesUpdated Role[] @relation("updater")
+
+  roomsCreated Room[] @relation("creator")
+  roomsUpdated Room[] @relation("updater")
+
+  levelsCreated Level[] @relation("creator")
+  levelsUpdated Level[] @relation("updater")
+
+  certificationCreated CertificationTitle[] @relation("creator")
+  certificationUpdated CertificationTitle[] @relation("updater")
+
+  // schoolStudyId String?
+  // schoolStudy   School? @relation("study", fields: [schoolStudyId], references: [id], onDelete: Restrict)
+
+  // schoolChildrenStudyId String?
+  // schoolChildrenStudy   School? @relation("childrenStudy", fields: [schoolChildrenStudyId], references: [id], onDelete: Restrict)
+
+  // subjectTitleId String?
+  // subjectTitle   SubjectTitle? @relation(fields: [subjectTitleId], references: [id], onDelete: Restrict)
+
+  // classroomStudyId String?
+  // classroomStudy     Classroom? @relation("study", fields: [classroomStudyId], references: [id], onDelete: Restrict)
+
+  creator     User?  @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+  userCreated User[] @relation("creator")
+
+  updater     User?  @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+  userUpdated User[] @relation("updater")
+
+  emailSend           Mail[]          @relation("emailSend")
+  emailRecive         Mail[]          @relation("emailRecive")
+  postalAdressCreated PostalAddress[] @relation("creator")
+  postalAdressUpdated PostalAddress[] @relation("updater")
+  organizedEvents     Event[]         @relation("EventOrganizer")
+  registrations      Registrations[]
+
+  @@map("user")
+}
+
+enum ClientType {
+  NURSERY
+  PRIMARY
+  COLLEGE
+  HIGH_SCHOOL
+}
+
+model Client {
+  id         String     @id @default(uuid())
+  userId     String     @unique @map("user_id")
+  clientType ClientType @map("client_type")
+
+  user User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("client")
+}
+
+enum GENDER {
+  HOMME
+  FEMME
+}
+
+model Profile {
+  id                 String          @id @default(cuid())
+  firstName          String          @map("first_name") @db.VarChar(150)
+  lastName           String?         @map("last_name") @db.VarChar(150)
+  gender             GENDER
+  birthDate          DateTime        @map("birth_date")
+  birthPlace         String?         @map("birth_place") @db.VarChar(150)
+  profession         String?         @db.VarChar(150)
+  registrationNumber String          @unique(map: "registration_number_idx") @map("registration_number") @db.VarChar(150)
+  cin                String?         @unique @db.VarChar(50)
+  postalAddress      PostalAddress[]
+  phone              String[]        @db.VarChar(50)
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  userId String @unique @map("user_id")
+  users  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profile")
+}
+
+model PostalAddress {
+  id        Int      @id @default(autoincrement())
+  profileId String   @map("profile_id")
+  address   String
+  isCurrent Boolean  @map("is_current")
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String   @map("created_by")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  profile Profile @relation(fields: [profileId], references: [id])
+  creator User    @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+}
+
+model Family {
+  id String @id @default(cuid())
+
+  relatedUserId String       @map("related_user_id")
+  relationship  Relationship
+
+  relatedUser User @relation("relatedUser", fields: [relatedUserId], references: [id], onDelete: Cascade)
+
+  @@map("family")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_token")
+}
+
+model PasswordResetToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+  @@map("password_reset_token")
+}
+
+model TwoFactorToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+  @@map("two_factor_token")
+}
+
+model TwoFactorConfirmation {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@map("two_factor_confirmation")
+}
+
+enum Status {
+  PUBLIQUE
+  PRIVE
+}
+
+enum Parcours {
+  GENERAL
+  TECHNIQUE
+}
+
+enum Cycle {
+  COLLEGE
+  LYCEE
+  PRIMAIRE
+}
+
+enum Mentions {
+  PASSABLE
+  ASSEZ_BIEN
+  BIEN
+  TRES_BIEN
+}
+
+enum ExamNoteType {
+  TEST
+  EXAM
+}
+
+enum RegistrationType {
+  INSCRIPTION
+  REINSCRIPTION
+}
+
+enum Relationship {
+  PERE_FILS
+  MERE_FILS
+  PERE_FILLE
+  MERE_FILLE
+  FRERE_SOEUR
+  SOEUR_SOEUR
+  FRERE_FRERE
+  ONCLE_NEVEU
+  ONCLE_NIECE
+  TANTE_NEUVEU
+  TANTE_NIECE
+  COUSIN_COUSINE
+  AMIS
+}
+
+model Role {
+  id    String                @id @default(cuid())
+  name  String
+  type  RoleAuthorizationType
+  users RoleUser[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  createdBy String? @map("created_by")
+  creator   User?   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  schoolId String?
+  school   School? @relation(fields: [schoolId], references: [id])
+
+  @@map("role")
+}
+
+model Room {
+  id   String @id @default(cuid())
+  name String
+
+  dispatch Dispatch[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id])
+
+  @@map("room")
+}
+
+model RoleUser {
+  id         String   @id @default(cuid())
+  assignedAt DateTime @default(now())
+
+  roleId String @map("role_id")
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  userId String @map("user_id")
+  user   User   @relation("user", fields: [userId], references: [id])
+
+  assignatorId String @map("assignator_id")
+  assignator   User   @relation("assignator", fields: [assignatorId], references: [id])
+
+  @@map("role_user")
+}
+
+model School {
+  id          String  @id @default(cuid())
+  name        String  @db.VarChar(150)
+  address     String? @db.VarChar(150)
+  description String?
+  imageUrl    String? @map("image_url")
+
+  status        Status?
+  parcours      Parcours?
+  cycle         Cycle?
+  roles         Role[]
+  rooms         Room[]
+  staff         Staff[]          @relation("work")
+  contacts      ContactsSchool[]
+  subjectsTitle SubjectTitle[]
+  classrooms    Classroom[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("schools")
+}
+
+model ContactsSchool {
+  id      String @id @default(cuid())
+  contact String @db.VarChar(150)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  schoolId String @map("school_id")
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@map("contacts_school")
+}
+
+model SchoolYear {
+  id         Int @id @default(autoincrement())
+  startYears Int @map("start_years")
+  endYears   Int @map("end_years")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  classrooms      Classroom[]
+  registrationFee RegistrationFee[]
+  tutitionFee     TutitionFee[]
+  periods         Period[]
+  subjects        Subject[]
+  registration    Registration[]
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@unique([startYears, endYears])
+  @@index([startYears, endYears], map: "start_end_years_idx")
+  @@map("school_years")
+}
+
+model Period {
+  id        String   @unique @default(cuid())
+  name      String
+  endDate   DateTime @map("end_date")
+  startDate DateTime @map("start_date")
+
+  examPeriod        ExamPeriod[]
+  reportCard        ReportCard[]
+  classAverage      ClassAverage[]
+  subjectReportCard SubjectReportCard[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  schoolYearId Int        @map("school_year_id")
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id])
+
+  @@map("period")
+}
+
+model SubjectTitle {
+  id           String @id @default(cuid())
+  name         String
+  codification String @unique
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  subjects  Subject[]
+  exercises Exercise[]
+  skills    Skills[]
+
+  schoolId String @map("school_id")
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("subject_title")
+}
+
+model DomainSuject {
+  id             Int      @id @default(autoincrement())
+  name           String
+  icon           String
+  subjectTitleId String   @map("subject_title_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("domain_subject")
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  coefficient Int      @default(1)
+  serie       SERIE?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  examSession ExamSession[]
+
+  subjectTitleId String       @map("subject_title_id")
+  subjectTitle   SubjectTitle @relation(fields: [subjectTitleId], references: [id], onDelete: Restrict)
+
+  schoolYearId Int        @map("school_years_id")
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Restrict)
+
+  levelId Int   @map("level_id")
+  level   Level @relation(fields: [levelId], references: [id], onDelete: Restrict)
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("subject_school")
+}
+
+model Exercise {
+  id              String @id @default(cuid())
+  statement       String
+  domain          String
+  difficultyLevel Float  @map("difficulty_level")
+  serie           SERIE?
+  subjectTitleId  String @map("subject_title_id")
+  levelId         Int    @map("level_id")
+
+  exerciseHistory ExerciseHistory[]
+  questions       Questions[]
+
+  level   Level        @relation(fields: [levelId], references: [id])
+  subject SubjectTitle @relation(fields: [subjectTitleId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("exercise")
+}
+
+model Skills {
+  id                 String @id @default(cuid())
+  domain             String
+  level_skill        Float
+  performanceHistory Json   @map("performance_history")
+  agentId            String @map("agent_id")
+  userId             String @map("user_id")
+  subjectTitleId     String @map("subject_title_id")
+
+  user         User         @relation(fields: [userId], references: [id])
+  subjectTitle SubjectTitle @relation(fields: [subjectTitleId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([agentId, domain])
+  @@map("skills")
+}
+
+model ExerciseHistory {
+  id         String @id @default(cuid())
+  average    Float
+  exerciseId String @map("exercise_id")
+  userId     String @map("user_id")
+
+  user     User     @relation(fields: [userId], references: [id])
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("exercise_history")
+}
+
+model Questions {
+  id          String  @id @default(cuid())
+  exerciseId  String  @map("exercise_id")
+  statement   String
+  method      String?
+  response    String?
+  explication String?
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("questions")
+}
+
+model AgentSkill {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  domain             String
+  levelSkill         Float    @map("level_skill")
+  performanceHistory String   @map("performance_history") // JSON string
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, domain])
+}
+
+model AgentQLearningState {
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  domain            String
+  qTable            String   @map("q_table") // JSON string
+  cumulativeRewards String   @map("cumulative_rewards") // JSON string
+  nAttempts         String // JSON string
+  epsilon           Float
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, domain])
+}
+
+model Staff {
+  id           String    @id @default(cuid())
+  serviceStart DateTime  @default(now()) @map("service_start")
+  serviceEnd   DateTime? @map("service_end")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  schoolId String @unique @map("school_id")
+  school   School @relation("work", fields: [schoolId], references: [id], onDelete: Restrict)
+
+  userId String @unique @map("user_id")
+  user   User   @relation("staff", fields: [userId], references: [id], onDelete: Restrict)
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("staff")
+}
+
+model Mail {
+  id      String   @id @default(cuid())
+  subject String
+  text    String
+  date    DateTime @default(now())
+
+  read Boolean @default(false)
+  spam Boolean @default(false)
+
+  senderId String
+  sender   User   @relation("emailSend", fields: [senderId], references: [id], onDelete: Restrict)
+
+  reciverId String
+  rever     User   @relation("emailRecive", fields: [reciverId], references: [id], onDelete: Restrict)
+}
+
+enum Albums {
+  angry
+  disgust
+  fear
+  happy
+  neutral
+  sad
+  surprise
+}
+
+model Image {
+  id      String @id @default(cuid())
+  path    String
+  albumId String
+  album   Albums
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+}
+
+model Classroom {
+  id        String @id @default(cuid())
+  name      String
+  headcount Int
+  maxSpace  Int    @map("max_space")
+
+  students           Registration[]
+  classAverage       ClassAverage[]
+  correctionTracking CorrectionTracking[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  levelId Int   @map("level_id")
+  level   Level @relation(fields: [levelId], references: [id])
+
+  userId    String @unique @map("staff_id")
+  titulaire User   @relation("titularized", fields: [userId], references: [id])
+
+  schoolYearId Int        @map("school_year_id")
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id])
+
+  schoolId String @map("school_id")
+  school   School @relation(fields: [schoolId], references: [id])
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("classroom")
+}
+
+model Registration {
+  id   String           @unique @default(cuid())
+  type RegistrationType
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  classroomId String    @map("classroom_id")
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+
+  payements Payment[]
+
+  schoolYearId Int        @map("school_year_id")
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id])
+
+  studientId String @map("student_id")
+  student    User   @relation("student", fields: [studientId], references: [id], onDelete: Restrict)
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("registration")
+}
+
+model RegistrationFee {
+  id     String  @id @default(cuid())
+  amount Decimal
+
+  payment Payment[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  schoolYearId Int        @map("school_year_id")
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id])
+
+  levelId Int   @map("level_id")
+  level   Level @relation(fields: [levelId], references: [id])
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("registration_fee")
+}
+
+model TutitionFee {
+  id     String  @id @default(cuid())
+  amount Decimal
+
+  feeSlice FeeSlice[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  schoolYearId Int        @map("school_year_id")
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id])
+
+  levelId Int   @map("level_id")
+  level   Level @relation(fields: [levelId], references: [id])
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("tutition_fee")
+}
+
+model FeeSlice {
+  id     String  @id @default(cuid())
+  amount Decimal
+  month  Int
+  rank   Int
+
+  payments Payment[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tutitionFeeId String
+  tutitionFee   TutitionFee @relation(fields: [tutitionFeeId], references: [id])
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("fee_slice")
+}
+
+enum PaymentType {
+  FRAIS_GENERAUX
+  FRAIS_SCOLARITE
+}
+
+enum PaymentMode {
+  ESPECE
+  CHEQUE
+  MOBILE_MONEY
+}
+
+model Payment {
+  id              String      @id @default(cuid())
+  amount          Decimal
+  remainingAmount Decimal     @map("remaining_amount")
+  type            PaymentType
+  paymentMode     PaymentMode @map("payment_mode")
+  paymentRef      String      @map("payment_ref")
+  date            DateTime    @default(now())
+
+  feeSliceId String?   @map("fee_slice_id")
+  feeSlice   FeeSlice? @relation(fields: [feeSliceId], references: [id])
+
+  registrationFeeId String?          @map("registration_fee_id")
+  registrationFee   RegistrationFee? @relation(fields: [registrationFeeId], references: [id])
+
+  registrationId String?       @map("registration_id")
+  registration   Registration? @relation(fields: [registrationId], references: [id])
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("payment")
+}
+
+model ExamPeriod {
+  id        String   @id @default(cuid())
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  periodId String @map("period_id")
+  period   Period @relation(fields: [periodId], references: [id])
+
+  dispatch    Dispatch[]
+  examSession ExamSession[]
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("exam_period")
+}
+
+model ExamSession {
+  id        String       @id @default(cuid())
+  date      DateTime
+  startTime DateTime     @map("start_time") @db.Time()
+  endTime   DateTime     @map("end_time") @db.Time()
+  type      ExamNoteType
+
+  notes              Note[]
+  correctionTracking CorrectionTracking[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  levelId Int   @map("level_id")
+  level   Level @relation(fields: [levelId], references: [id])
+
+  subjectId String  @map("subject_id")
+  subject   Subject @relation(fields: [subjectId], references: [id])
+
+  examPeriodId String     @map("exam_period_id")
+  examPeriod   ExamPeriod @relation(fields: [examPeriodId], references: [id])
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("exam_session")
+}
+
+model Dispatch {
+  id              String   @id @default(cuid())
+  examInvigilator String[] @map("exam_invigilator")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  examPeriodId String     @map("exam_period_id")
+  examPeriod   ExamPeriod @relation(fields: [examPeriodId], references: [id])
+
+  roomId String @map("room_id")
+  room   Room   @relation(fields: [roomId], references: [id])
+
+  candidateExamRoom CandidateExamRoom[]
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("dispatch")
+}
+
+model CandidateExamRoom {
+  id         String @id @default(cuid())
+  examNumber String @map("exam_number")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  studentId String
+  Student   User   @relation("student", fields: [studentId], references: [id])
+
+  dispatchId String   @map("dispatch_id")
+  dispatch   Dispatch @relation(fields: [dispatchId], references: [id])
+
+  @@map("candidate_exam_room")
+}
+
+model Note {
+  id     String  @id @default(cuid())
+  rating Decimal
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  studentId String @map("student_id")
+  Student   User   @relation("student", fields: [studentId], references: [id])
+
+  examSessionId String      @map("exam_session_id")
+  examSession   ExamSession @relation(fields: [examSessionId], references: [id])
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("note")
+}
+
+model CorrectionTracking {
+  id             String   @id @default(cuid())
+  releaseDate    DateTime @map("release_date")
+  returnDate     DateTime @map("return_date")
+  copiesReleased Int      @map("copies_released")
+  retunedCopies  Int      @map("retuned_copies")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  classroomId String    @map("classroom_id")
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+
+  examSessionId String      @map("exam_session_id")
+  examSession   ExamSession @relation(fields: [examSessionId], references: [id])
+
+  emitterReleaseId String? @map("emitter_release_id")
+  emitterRelease   User?   @relation("emitterRelease", fields: [emitterReleaseId], references: [id])
+
+  recipientReleaseId String? @map("recipient_release")
+  recipientRelease   User?   @relation("recipientRelease", fields: [recipientReleaseId], references: [id])
+
+  emitterReturnId String? @map("emitter_return_id")
+  emitterReturn   User?   @relation("emitterReturn", fields: [emitterReturnId], references: [id])
+
+  recipientReturnId String? @map("recipient_return_id")
+  recipientReturn   User?   @relation("recipientReturn", fields: [recipientReturnId], references: [id])
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("correction_tracking")
+}
+
+model ReportCard {
+  id               String       @id @default(cuid())
+  totalRating      Decimal      @map("total_rating")
+  totalCoefficient Int          @map("total_coefficient")
+  studentAverage   Decimal      @map("student_average")
+  rank             Int
+  absences         Int
+  delays           Int
+  mention          Mentions
+  type             ExamNoteType
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  classAverageId String?       @map("class_average_id")
+  classAverage   ClassAverage? @relation(fields: [classAverageId], references: [id], onDelete: Restrict)
+
+  periodId String @map("period_id")
+  period   Period @relation(fields: [periodId], references: [id])
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("report_card")
+}
+
+model ClassAverage {
+  id      String  @id @default(cuid())
+  average Decimal
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  reportCard ReportCard[]
+
+  classroomId String    @map("classroom_id")
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+
+  periodId String @map("period_id")
+  period   Period @relation(fields: [periodId], references: [id])
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("class_average")
+}
+
+model SubjectReportCard {
+  id String @id @default(cuid())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  subjects String[]
+  type     ExamNoteType
+
+  periodId String @map("period_id")
+  period   Period @relation(fields: [periodId], references: [id])
+
+  createdBy String @map("created_by")
+  creator   User   @relation("creator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  updatedBy String? @map("updated_by")
+  updater   User?   @relation("updater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("subject_report_card")
+}
+
+
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  date        DateTime
+  location    String
+  capacity    Int
+  imageUrl    String?
+  status      EventStatus @default(UPCOMING)
+  category    Category
+  tags        String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  organizerId String
+  organizer   User     @relation("EventOrganizer", fields: [organizerId], references: [id])
+  registrations Registrations[]
+}
+
+model Registrations {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  status    RegistrationStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  event     Event    @relation(fields: [eventId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+}
+
+enum Roles {
+  ADMIN
+  ORGANIZER
+  PARTICIPANT
+}
+
+enum EventStatus {
+  DRAFT
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum Category {
+  CONFERENCE
+  WORKSHOP
+  NETWORKING
+  CULTURAL
+  SPORTS
+  OTHER
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  WAITLIST
+}

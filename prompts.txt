@@ -1,0 +1,378 @@
+Je veux que react-query utilise le fallback pour les chaargements lors de la recuperation de données.
+
+## Server Action
+
+Créez un fichier `actions/subject.ts` pour définir l'action serveur :
+
+```typescript
+import { createSafeAction } from "next-safe-action";
+import { prisma } from "@/lib/prisma";
+
+export const getSubjects = createSafeAction(
+  async () => {
+    const subjects = await prisma.subject.findMany({
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        icon: true,
+      },
+    });
+    
+    return { subjects };
+  }
+);
+```
+
+## React Query Hook
+
+Créez un custom hook dans `hooks/useSubjects.ts` :
+
+```typescript
+import { useQuery } from "@tanstack/react-query";
+import { getSubjects } from "@/actions/subject";
+
+export function useSubjects() {
+  return useQuery({
+    queryKey: ["subjects"],
+    queryFn: async () => {
+      const { data, error } = await getSubjects();
+      if (error) throw new Error(error.message);
+      return data.subjects;
+    },
+  });
+}
+```
+
+## Composant Modifié
+
+Voici votre composant modifié pour utiliser les données dynamiques :
+
+```typescript
+"use client";
+
+import { useSubjects } from "@/hooks/useSubjects";
+import { useRouter } from "next/navigation";
+
+export default function SubjectSelection() {
+  const router = useRouter();
+  const { data: subjects, isLoading, error } = useSubjects();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-8 flex items-center justify-center">
+        <div className="text-red-500">Une erreur est survenue</div>
+      </div>
+    );
+  }
+
+  const handleSubjectClick = (subjectId: string) => {
+    router.push(`/domains/${subjectId}`);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-8 relative overflow-hidden">
+      {/* ... reste du JSX identique ... */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {subjects.map((subject, index) => (
+          <MotionCard
+            key={subject.id}
+            onClick={() => handleSubjectClick(subject.id)}
+            // ... reste des props identiques ...
+          >
+            {/* ... reste du contenu de la carte identique ... */}
+          </MotionCard>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+## Provider Setup
+
+Dans votre layout ou page racine, ajoutez le provider React Query :
+
+```typescript
+"use client";
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
+
+export default function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+}
+```
+
+Cette implémentation permet de :
+- Récupérer les matières depuis la base de données de manière sécurisée
+- Gérer les états de chargement et d'erreur
+- Mettre en cache les données avec React Query
+- Naviguer vers la page des domaines lors du clic sur une matière
+
+
+
+
+
+interface ExerciseJson {
+  matiere: string;
+  serie: string;
+  sous_matiere: string;
+  niveau_difficulte: number;
+  enonce: string;
+  questions: string[];
+  responses: string[];
+  explications: string[];
+  methodes?: string[];
+}
+
+
+const exos = exosJson.map() 
+
+interface Exercise {
+  matiere: string;
+  serie: string;
+  sous_matiere: string;
+  niveau_difficulte: number;
+  enonce: string;
+  questions:[
+    {
+      response: string,
+      explanation: string
+      methode: string
+      statement: string
+
+    },
+    ....
+  ]
+}
+
+
+
+
+ user : {
+  skills: {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        domain: string;
+        subjectTitleId: string;
+        level_skill: number;
+        userId: string;
+    }[];
+    exerciceHistory: {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        exerciseId: string;
+        userId: string;
+        average: number;
+    }[];
+}
+
+exercises: {
+    id: string
+    serie: SERIE;
+    difficulty_level: number;
+    statement: string;
+    domain: string;
+}[]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Introduction (3 minutes)
+- **Contexte :**
+  - Expliquer brièvement l'importance de l'intégration de l'IA dans l'éducation, en mentionnant le contexte de Madagascar.
+  - Parler des défis éducatifs que le pays rencontre, comme le taux d'analphabétisme et l'impact de l'IA sur la qualité de l'éducation.
+  
+- **Présentation du projet :**
+  - Définir votre projet : "Conception d'un assistant pédagogique virtuel pour améliorer la consolidation des acquis des élèves".
+  - Mentionner les objectifs principaux, comme l'amélioration de la persévérance scolaire et l'adaptation aux besoins individuels des élèves.
+
+- **Annonce du plan :**
+  - Présenter brièvement les grandes sections de votre présentation : Méthode, Résultats, Discussions, Recommandations et Conclusion.
+
+### Méthode (2 minutes)
+- **Explication brève de la méthode :**
+  - Décrire les méthodes utilisées pour valider vos hypothèses (analyse documentaire, simulations).
+  - Mentionner les algorithmes d'apprentissage (Q-learning et ε-greedy) utilisés dans la conception de l'application.
+
+### Résultats (10 minutes)
+1. **Explication et interprétation des résultats des études (2 minutes) :**
+   - Résumer les données clés sur les besoins éducatifs et les résultats des simulations.
+   - Souligner les indicateurs de performance et leur impact sur le projet.
+
+2. **Explication de l'architecture et de la conception du système (3 minutes) :**
+   - Présenter l'architecture du système (front-end, back-end, base de données).
+   - Discuter des composants principaux de l'application et de leur interaction.
+
+3. **Présentation de l'application (5 minutes) :**
+   - Démontrer l'interface utilisateur et expliquer ses fonctionnalités clés.
+   - Montrer des exemples concrets d'utilisation, comme l'adaptation dynamique des exercices.
+
+### Discussions et Recommandations (3 minutes)
+- **Discussions :**
+  - Analyser l'impact potentiel de votre application sur le système éducatif à Madagascar.
+  - Discuter des défis rencontrés lors de la mise en œuvre du projet.
+
+- **Recommandations :**
+  - Proposer des améliorations possibles pour l'assistant pédagogique virtuel.
+  - Suggérer des orientations futures pour la recherche dans ce domaine.
+
+### Conclusions (2 minutes)
+- **Conclusion générale :**
+  - Résumer les points clés de votre présentation.
+  
+- **Validation des hypothèses :**
+  - Confirmer ou infirmer les hypothèses initiales en fonction des résultats obtenus.
+
+- **Finir la conclusion :**
+  - Terminer sur une note positive en mettant en avant l'importance de l'IA dans l'éducation.
+
+- **Remerciements :**
+  - Remercier le président du jury, les examinateurs, le public et l'établissement pour leur soutien.
+
+### Clôturer la présentation
+- Inviter le public à poser des questions si le temps le permet, sinon exprimer votre ouverture pour des discussions ultérieures.
+
+
+
+
+
+
+
+
+
+
+
+
+
+Voici un discours structuré pour la section « Résultats », extrait du document et organisé selon vos directives :
+
+---
+
+### Résultats (10 minutes)
+
+1. **Explication des besoins essentiels pour la mise en place d’un APV (1 minute 30)**
+
+   **Analyse de l’existant :**  
+   Une évaluation des applications existantes, telles que **Brainly**, **Stewdy**, et **MagicSchool**, a été réalisée. Par exemple, la fonctionnalité "Snap to Solve" de Brainly, qui utilise l'intelligence artificielle pour résoudre rapidement des problèmes, a un taux de satisfaction de 70 % parmi les utilisateurs. Cependant, les évaluations de Brainly sur des plateformes comme Trustpilot révèlent une insatisfaction générale, avec des notes très basses. Cela indique un besoin pressant d'améliorer les outils existants.
+
+   **Analyse des besoins :**  
+   L'identification des différents profils d'élèves est cruciale. Une étude basée sur les données de l'OCDE PISA 2022 a montré que 82,6 % des élèves possèdent un ordinateur, mais une proportion significative d'entre eux ne tire pas pleinement parti des outils d'intelligence artificielle disponibles. L'analyse des performances académiques a révélé que 41,1 % des élèves rencontrent des difficultés en mathématiques, tandis que 57,7 % sont motivés. Ces indicateurs soulignent l'importance d'un APV qui répond aux besoins spécifiques et adaptés aux compétences de chaque élève.
+
+2. **Explication de la mise en place de l’assistant pédagogique virtuel (3 minutes)**
+
+   **Architecture du système :**  
+   L'architecture de l'APV est conçue autour d'une structure 3-tiers. Le **front-end** est développé en NextJS, permettant une interface utilisateur interactive. Le **back-end**, construit avec FastAPI, gère la logique métier, et la **base de données**, utilisant PostgreSQL, stocke toutes les informations relatives aux élèves et aux exercices.
+
+   **Interaction utilisateur :**  
+   Un diagramme de classe (à présenter avec des images) illustre l'interaction entre les utilisateurs (élèves et enseignants) et le système. Les principaux composants incluent la gestion des utilisateurs, des exercices et des performances. Ces composants interagissent de manière dynamique pour offrir un parcours d'apprentissage personnalisé.
+
+   **Simulation effectuée :**  
+   La simulation a été réalisée à l'aide des algorithmes Q-learning et ε-greedy, permettant d'évaluer l'efficacité de l'adaptation des exercices selon les performances des élèves. Ces simulations ont démontré une amélioration significative des résultats scolaires des élèves en difficulté.
+
+3. **Présentation de l'application (5 minutes)**
+
+   **Interface utilisateur :**  
+   L'interface de l'application est intuitive, permettant aux élèves de naviguer facilement entre les exercices. Des captures d'écran montreront les principales fonctionnalités, comme la soumission d'exercices, la visualisation des résultats et le suivi des compétences.
+
+   **Fonctionnalités clés :**  
+   - **Adaptation dynamique des exercices :** Le système ajuste la difficulté en fonction des performances passées, garantissant que chaque élève est mis au défi tout en consolidant ses acquis.
+   - **Suivi des compétences :** Les élèves peuvent consulter leur progression dans les différentes matières, favorisant ainsi une prise de conscience de leurs forces et faiblesses.
+
+   **Exemples concrets :**  
+   Des exemples d'utilisation illustreront comment l'APV adapte les exercices en temps réel. Par exemple, un élève en difficulté pourrait recevoir des exercices supplémentaires sur des concepts spécifiques, tandis qu'un élève performant pourrait être proposé des défis plus avancés.
+
+
+
+
+### Introduction (3 minutes)
+- **Présentation du projet :**
+  - Définir votre projet : "Conception d'un assistant pédagogique virtuel pour améliorer la consolidation des acquis des élèves".
+  - Mentionner les objectifs principaux, comme l'amélioration de la persévérance scolaire et l'adaptation aux besoins individuels des élèves.
+- **Contexte :**
+  - Expliquer brièvement l'importance de l'intégration de l'IA dans l'éducation, en mentionnant le contexte de Madagascar. (Avec le peu de phrase possible)
+  - Prêsenter Introduire une réalitécontradictoire puis poursuivre avec la présentation de la problématique
+  - Presenter les questions de recherche par rapport à l'étude
+  - Présentation de l'objectif global
+  - Présentation des objectifs specifiques
+  - Présentation des hypothèses
+  - Présentation des hypothèses
+- **Annonce du plan :**
+  - Présenter brièvement les grandes sections de votre présentation : Introduction, Méthode, Résultats, Discussions, Recommandations et Conclusion.
+  
+
+
+
+
+
+Voici une version inspirée et dynamique de l'introduction pour votre présentation, intégrant des éléments clés du livre :
+
+---
+
+### Introduction (3 minutes)
+
+**Mesdames et Messieurs, honorables membres du jury,** 
+
+Aujourd'hui, je suis ici pour vous présenter un projet ambitieux : la **conception d'un assistant pédagogique virtuel (APV) pour améliorer la consolidation des acquis des élèves**. Ce projet vise à transformer le paysage éducatif à Madagascar en offrant des solutions adaptées qui répondent aux besoins spécifiques de chaque élève.
+
+Dans un contexte où l'éducation malgache fait face à de nombreux défis—un taux élevé d'analphabétisme et un accès inégal aux ressources—l'intégration de l'intelligence artificielle (IA) se révèle essentielle. L'UNESCO soutient cette initiative en encourageant l'utilisation de l'IA pour optimiser les performances éducatives, et le gouvernement prévoit la création d'instituts dédiés à cette technologie. Cependant, sans une adaptation aux spécificités locales, l'impact de ces innovations risque de rester limité. 
+
+C'est ici que se pose notre **problématique** : **Comment un assistant pédagogique virtuel, basé sur l'IA, peut-il améliorer la qualité de l'apprentissage et renforcer la persévérance scolaire des élèves à Madagascar, en prenant en compte les particularités de notre système éducatif ?**
+
+Pour répondre à cette question, plusieurs **questions de recherche** émergent :
+- Quels facteurs influencent la qualité de l'apprentissage et la persévérance scolaire dans le contexte malgache ?
+- Comment concevoir un mentor virtuel capable de s'adapter aux besoins des élèves ?
+
+L'objectif global de ce projet est clair : concevoir et implémenter un système d'assistance virtuel qui améliore efficacement la consolidation des connaissances chez les élèves. Pour atteindre cet objectif, plusieurs **objectifs spécifiques** ont été définis, tels que l'analyse des besoins des élèves et la création d'un outil efficace pour l'apprentissage.
+
+Pour soutenir cette démarche, nous avons formulé les hypothèses suivantes :
+1. L'analyse des besoins pour la mise en place d'un assistant pédagogique permettra d’identifier les différents profils d'élèves et de justifier l'instauration d’un APV.
+2. La conception et l'implémentation d'un mentor virtuel basé sur l'IA contribueront à améliorer le niveau de compétence des élèves.
+
+**Pour structurer ma présentation**, je vous proposerai un plan détaillé qui inclura une introduction au projet, la méthode de conception employée, les résultats obtenus, des discussions sur ces résultats, des recommandations pour l'avenir, et enfin une conclusion sur l'importance de l'IA dans l'éducation.
+
+Je vous remercie pour votre attention et vous invite à découvrir ensemble ce projet innovant qui pourrait véritablement transformer l'éducation à Madagascar.
+
+---
+
+Cette version dynamise votre introduction tout en respectant les points essentiels que vous avez mentionnés. N'hésitez pas à ajuster le contenu ou le ton selon vos préférences !
