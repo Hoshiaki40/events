@@ -15,7 +15,7 @@ export default async function MyEventsPage() {
         </Link>
       </div>
 
-      <EventList userId={session?.user.id} />
+      <EventList userId={session?.user.id} showActions />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { deleteEvent } from "@/src/server-actions/event/deleteEvent";
 import { getEvents } from "@/src/server-actions/event/getEvents";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedCallback } from "use-debounce";
@@ -34,7 +35,7 @@ export function useEventList(options?: {
   });
 }
 
-export function EventList({ userId }: EventListProps) {
+export function EventList({ userId, showActions }: EventListProps) {
   const [filter, setFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
@@ -89,7 +90,12 @@ export function EventList({ userId }: EventListProps) {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredEvents.map((event) => (
-          <EventCard key={event.id} event={event} />
+          <EventCard
+            key={event.id}
+            event={event}
+            showActions={showActions}
+            onDelete={deleteEvent}
+          />
         ))}
       </div>
 

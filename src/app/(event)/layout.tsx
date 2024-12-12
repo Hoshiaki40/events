@@ -9,7 +9,7 @@ export default function RootLayout({
 }) {
   return (
     <div className={`flex min-h-screen flex-col bg-background text-foreground`}>
-      <NavBar isLoggedIn={true} userInitials="JD" userRole="ADMIN" />
+      <NavBar isLoggedIn={true} />
       <main className="container mx-auto flex-grow px-4 py-8">{children}</main>
       <footer className="mt-auto bg-muted py-6">
         <div className="container mx-auto px-4 text-center text-muted-foreground">

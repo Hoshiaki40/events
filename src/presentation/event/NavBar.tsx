@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { logout } from "@/src/server-actions/auth/logout.action";
+import { LogOut, Menu, X } from "lucide-react";
 
 import {
   Avatar,
@@ -17,20 +18,22 @@ import {
   DropdownMenuTrigger,
 } from "@/src/presentation/components/ui/dropdown-menu";
 
+import { useCurrentSession } from "../hooks/use-current-session";
+
 interface NavBarProps {
   isLoggedIn: boolean;
-  userInitials?: string;
-  userAvatar?: string;
   userRole?: "ADMIN" | "ORGANIZER" | "PARTICIPANT";
 }
 
-export function NavBar({
-  isLoggedIn,
-  userInitials,
-  userAvatar,
-  userRole,
-}: NavBarProps) {
+const userStatic = {
+  name: "shadcn",
+  email: "m@example.com",
+  avatar: "/avatars/shadcn.jpg",
+};
+
+export function NavBar({ isLoggedIn, userRole }: NavBarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const user = useCurrentSession();
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
@@ -78,27 +81,30 @@ export function NavBar({
                       className="relative h-8 w-8 rounded-full"
                     >
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={userAvatar} alt="User avatar" />
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {userInitials}
-                        </AvatarFallback>
+                        <AvatarImage
+                          src={user?.image ?? userStatic.avatar}
+                          alt={user?.name ?? userStatic.name}
+                        />
+                        <AvatarFallback className="rounded-lg">{`${user?.name?.charAt(0) ?? "C"}${user?.name?.charAt(1) ?? "N"}`}</AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end">
-                    <DropdownMenuItem asChild>
-                      <Link href="/profile" className="cursor-pointer">
-                        Profile
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings" className="cursor-pointer">
-                        Settings
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer text-destructive">
-                      Logout
-                    </DropdownMenuItem>
+                    <form
+                      action={async () => {
+                        await logout();
+                      }}
+                    >
+                      <DropdownMenuItem asChild>
+                        <button
+                          type="submit"
+                          className="flex w-full items-center"
+                        >
+                          <LogOut className="mr-2 h-4 w-4" />
+                          <span>Log out</span>
+                        </button>
+                      </DropdownMenuItem>
+                    </form>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>

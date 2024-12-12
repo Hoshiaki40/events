@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createEvent } from "@/src/server-actions/event/createEvent";
+import { getEventById } from "@/src/server-actions/event/getEventById";
+import { updateEvent } from "@/src/server-actions/event/updateEvent";
 import { cn } from "@/src/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -45,8 +47,18 @@ import {
   eventSchema,
 } from "@/src/presentation/schemas/event.schema";
 
-export default function CreateEventPage() {
+export function useEventById(eventId: string) {
+  return useQuery({
+    queryKey: ["event", eventId],
+    queryFn: () => getEventById(eventId),
+    enabled: !!eventId, // N'exécute la requête que si eventId est présent
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export default function EditEventPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { data, isLoading, error } = useEventById(params.id);
 
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
@@ -63,22 +75,47 @@ export default function CreateEventPage() {
     },
   });
 
+  useEffect(() => {
+    if (data?.success && data.data) {
+      form.reset({
+        title: data.data.title,
+        description: data.data.description,
+        date: new Date(data.data.date),
+        location: data.data.location,
+        capacity: data.data.capacity,
+        category: data.data.category,
+        tags: data.data.tags,
+        imageUrl: data.data.imageUrl ?? undefined,
+        status: data.data.status,
+      });
+    }
+  }, [data, form.reset]);
+
+  const queryClient = useQueryClient();
+
   async function onSubmit(data: EventFormData) {
-    const result = await createEvent(data);
+    const result = await updateEvent(params.id, data);
 
     if (result.success) {
-      router.push("/my-events");
+      // Invalidate all queries containing "events" or "event"
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["event"] });
+      router.push(`/events/${params.id}`);
     } else {
       // Gérer l'erreur (afficher un message, etc.)
       console.error(result.error, result.details);
     }
   }
 
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="container py-6">
       <Card>
         <CardHeader>
-          <CardTitle>Create New Event</CardTitle>
+          <CardTitle>Edit Event</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -90,7 +127,7 @@ export default function CreateEventPage() {
                   <FormItem>
                     <FormLabel>Event Title</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter event title" {...field} />
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -103,10 +140,7 @@ export default function CreateEventPage() {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Enter event description"
-                        {...field}
-                      />
+                      <Textarea {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -160,7 +194,7 @@ export default function CreateEventPage() {
                   <FormItem>
                     <FormLabel>Location</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter event location" {...field} />
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -175,7 +209,6 @@ export default function CreateEventPage() {
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="Enter event capacity"
                         {...field}
                         onChange={(e) =>
                           field.onChange(parseInt(e.target.value, 10))
@@ -270,7 +303,7 @@ export default function CreateEventPage() {
                   <FormItem>
                     <FormLabel>Image URL</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter image URL" {...field} />
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -303,7 +336,7 @@ export default function CreateEventPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit">Create Event</Button>
+              <Button type="submit">Update Event</Button>
             </form>
           </Form>
         </CardContent>
